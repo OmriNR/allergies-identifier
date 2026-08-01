@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Allergy Identifier API — local vector store & generated registry
+/data/chroma/
+/data/documents.json
