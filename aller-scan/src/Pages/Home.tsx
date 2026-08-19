@@ -1,30 +1,29 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShieldCheck, History, Settings } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import * as userPropertiesApi from "@/api/userProperties";
+import type { ScanHistoryItem } from "@/api/userProperties";
 import BarcodeScanner from "@/components/BarcodeScanner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
-interface ScanItem {
-  id: string;
-  barcode: string;
-  product_name: string;
-  status: "safe" | "dangerous";
-  detected_allergens?: string[];
-  brand?: string;
-}
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Home() {
   const navigate = useNavigate();
-  const [history, setHistory] = useState<ScanItem[]>([]);
+  const { user } = useAuth();
+  const [history, setHistory] = useState<ScanHistoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    base44.entities.ScanHistory.list("-created_date", 5)
-      .then((items: ScanItem[]) => setHistory(items))
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    userPropertiesApi
+      .getScanHistory(user.id, 5)
+      .then((items) => setHistory(items))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   const handleScan = (barcode: string) => {
     if (barcode) navigate(`/alert?barcode=${encodeURIComponent(barcode)}`);

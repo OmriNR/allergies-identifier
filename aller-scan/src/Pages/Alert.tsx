@@ -1,22 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, AlertTriangle, Loader2, RotateCcw } from "lucide-react";
-import { base44 } from "@/api/base44Client";
-
-interface ScanResult {
-  product_name: string;
-  brand: string;
-  detected: string[];
-  status: "safe" | "dangerous";
-}
+import * as scansApi from "@/api/scans";
+import { useAuth } from "@/lib/AuthContext";
+import type { ScanHistoryItem } from "@/api/userProperties";
 
 export default function Alert() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [params] = useSearchParams();
   const barcode = params.get("barcode");
 
   const [loading, setLoading] = useState<boolean>(true);
-  const [result, setResult] = useState<ScanResult | null>(null);
+  const [result, setResult] = useState<ScanHistoryItem | null>(null);
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
@@ -25,50 +21,22 @@ export default function Alert() {
       setLoading(false);
       return;
     }
+    if (!user) {
+      setError("You must be logged in to scan a product.");
+      setLoading(false);
+      return;
+    }
     (async () => {
       try {
-        const prefs = await base44.entities.UserPreference.list();
-        const userAllergies: string[] = prefs[0]?.allergies || [];
-
-        const res = await base44.integrations.Core.InvokeLLM({
-          prompt: `A grocery or consumer product has the barcode "${barcode}". Identify the product (name and brand) and list which of these allergens it contains: ${userAllergies.length ? userAllergies.join(", ") : "Milk, Eggs, Fish, Shellfish, Tree nuts, Peanuts, Wheat, Soybeans, Gluten, Sesame"}. If you cannot identify the product, still return your best guess name as "Unknown product".`,
-          add_context_from_internet: true,
-          response_json_schema: {
-            type: "object",
-            properties: {
-              product_name: { type: "string" },
-              brand: { type: "string" },
-              allergens: { type: "array", items: { type: "string" } },
-            },
-          },
-        }) as { product_name?: string; brand?: string; allergens?: string[] };
-
-        const detected = (res.allergens || []).filter((a) =>
-          userAllergies.some((u) => u.toLowerCase() === a.toLowerCase())
-        );
-        const status: "safe" | "dangerous" = detected.length > 0 ? "dangerous" : "safe";
-
-        await base44.entities.ScanHistory.create({
-          barcode,
-          product_name: res.product_name || "Unknown product",
-          brand: res.brand || "",
-          status,
-          detected_allergens: detected,
-        });
-
-        setResult({
-          product_name: res.product_name || "Unknown product",
-          brand: res.brand || "",
-          detected,
-          status,
-        });
+        const { historyEntry } = await scansApi.scanProduct(user.id, barcode);
+        setResult(historyEntry);
       } catch {
         setError("Could not check this product. Please try again.");
       } finally {
         setLoading(false);
       }
     })();
-  }, [barcode]);
+  }, [barcode, user]);
 
   if (loading) {
     return (
@@ -154,7 +122,7 @@ export default function Alert() {
           <div className="mt-4 rounded-2xl border border-red-200 bg-white p-5">
             <p className="text-sm font-medium text-red-700">Detected allergens</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {result.detected.map((a) => (
+              {(result.detected_allergens ?? []).map((a) => (
                 <span
                   key={a}
                   className="rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-700"

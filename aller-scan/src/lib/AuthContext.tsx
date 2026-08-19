@@ -1,51 +1,74 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import * as usersApi from "@/api/users"
+import * as authApi from "@/api/authentication"
+import type { User } from "@/api/users"
 
-export interface AuthUser {
-  id: string
-  name: string
-  email: string
-  avatarUrl?: string
-}
+export type AuthUser = User
 
 interface AuthContextValue {
   user: AuthUser | null
   isLoading: boolean
-  login: (user: AuthUser) => void
-  logout: () => void
+  login: (user: AuthUser, token: string) => void
+  logout: () => Promise<void>
+  updateUser: (data: Partial<Pick<AuthUser, "name" | "avatarUrl" | "email">>) => Promise<void>
 }
 
-const STORAGE_KEY = "auth:user"
+const TOKEN_STORAGE_KEY = "auth:token"
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
+  const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored) as AuthUser)
-      } catch {
-        localStorage.removeItem(STORAGE_KEY)
-      }
+    const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY)
+    if (!storedToken) {
+      setIsLoading(false)
+      return
     }
-    setIsLoading(false)
+
+    authApi.getSession(storedToken).then(async (session) => {
+      if (!session) {
+        localStorage.removeItem(TOKEN_STORAGE_KEY)
+        setIsLoading(false)
+        return
+      }
+      const restoredUser = await usersApi.getUser(session.userId)
+      if (restoredUser) {
+        setUser(restoredUser)
+        setToken(storedToken)
+      } else {
+        localStorage.removeItem(TOKEN_STORAGE_KEY)
+      }
+      setIsLoading(false)
+    })
   }, [])
 
-  function login(nextUser: AuthUser) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser))
+  function login(nextUser: AuthUser, nextToken: string) {
+    localStorage.setItem(TOKEN_STORAGE_KEY, nextToken)
+    setToken(nextToken)
     setUser(nextUser)
   }
 
-  function logout() {
-    localStorage.removeItem(STORAGE_KEY)
+  async function logout() {
+    if (token) {
+      await authApi.invalidateToken(token)
+    }
+    localStorage.removeItem(TOKEN_STORAGE_KEY)
+    setToken(null)
     setUser(null)
   }
 
+  async function updateUser(data: Partial<Pick<AuthUser, "name" | "avatarUrl" | "email">>) {
+    if (!user) return
+    const updated = await usersApi.updateUser(user.id, data)
+    setUser(updated)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   )
