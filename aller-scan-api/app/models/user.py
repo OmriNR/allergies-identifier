@@ -11,10 +11,11 @@ def get_datetime_utc() -> datetime:
 
 
 class User(Document):
-    id: UUID = Field(default_factory=uuid4)
+    uuid: Annotated[UUID, Field(default_factory=uuid4), Indexed(unique=True)]
     name: str
     email: Annotated[EmailStr, Indexed(unique=True)]
     avatar_url: str | None = None
+    is_active: bool = True
     created_at: datetime = Field(default_factory=get_datetime_utc)
 
     class Settings:
