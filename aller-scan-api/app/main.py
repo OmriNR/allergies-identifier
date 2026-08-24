@@ -1,19 +1,54 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.db import init_db
+from .auth.auth import get_hashed_password
+from .config.config import settings
+from .db import client, init_db
+from .models.user import User
+from .routes import api_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.client = client
     await init_db()
+
+    user = await User.find_one({"email": settings.FIRST_SUPERUSER})
+    if not user:
+        user = User(
+            name="Admin",
+            email=settings.FIRST_SUPERUSER,
+            password=get_hashed_password(settings.FIRST_SUPERUSER_PASSWORD),
+            is_superuser=True,
+        )
+        await user.create()
+
+    # yield app
     yield
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan,
+)
+
+# Set all CORS enabled origins
+if settings.BACKEND_CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            # See https://github.com/pydantic/pydantic/issues/7186
+            # for reason of using rstrip
+            str(origin).rstrip("/")
+            for origin in settings.BACKEND_CORS_ORIGINS
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+app.include_router(api_router, prefix=settings.API_V1_STR)

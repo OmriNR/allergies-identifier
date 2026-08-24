@@ -14,7 +14,7 @@ from .. import models, schemas
 from ..config.config import settings
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-ALGORITHM = "H256"
+ALGORITHM = "HS256"
 
 class OAuth2PasswordBearerWithCookie(OAuth2):
 

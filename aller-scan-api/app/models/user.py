@@ -14,8 +14,10 @@ class User(Document):
     uuid: Annotated[UUID, Field(default_factory=uuid4), Indexed(unique=True)]
     name: str
     email: Annotated[EmailStr, Indexed(unique=True)]
+    password: str
     avatar_url: str | None = None
     is_active: bool = True
+    is_superuser: bool = False
     created_at: datetime = Field(default_factory=get_datetime_utc)
 
     class Settings:
