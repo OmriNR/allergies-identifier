@@ -6,4 +6,7 @@ from .user_properties import (
     ScanHistory,
     ScanHistoryCreate,
 )
+
 from .users import User, UserCreate, UserUpdate
+
+from .products import Product, ProductCreate, ProductFilter

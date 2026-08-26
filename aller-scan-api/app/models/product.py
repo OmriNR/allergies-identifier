@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 from enum import Enum
+from typing import Annotated
 from uuid import UUID, uuid4
 
 from beanie import Document, Indexed
@@ -17,7 +18,7 @@ class ProductSource(str, Enum):
 
 class Product(Document):
     id: UUID = Field(default_factory=uuid4)
-    barcode: Indexed(str, unique=True)
+    barcode: Annotated[str, Indexed(unique=True)]
     product_name: str
     brand: str | None = None
     allergens: list[str] = []

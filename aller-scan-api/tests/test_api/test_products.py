@@ -120,3 +120,187 @@ class TestListProducts:
     async def test_negative_limit_returns_422(self, client):
         response = await client.get("/api/v1/products/", params={"limit": -1})
         assert response.status_code == 422
+
+
+# --- Below: tests for the endpoints as actually implemented today ---
+# (distinct from the assumed-contract section above, which describes an
+# intended API that these routes don't yet match).
+
+
+class TestListOfProducts:
+    async def test_no_filters_returns_all(self, client, auth_headers):
+        await client.post(
+            "/api/v1/products/", json=product_payload(barcode="111"), headers=auth_headers
+        )
+        await client.post(
+            "/api/v1/products/", json=product_payload(barcode="222"), headers=auth_headers
+        )
+
+        response = await client.post("/api/v1/products/list_of_products", json={})
+        assert response.status_code == 200, response.text
+        barcodes = {item["barcode"] for item in response.json()}
+        assert barcodes == {"111", "222"}
+
+    async def test_filters_by_brand(self, client, auth_headers):
+        await client.post(
+            "/api/v1/products/",
+            json=product_payload(barcode="111", brand="Acme"),
+            headers=auth_headers,
+        )
+        await client.post(
+            "/api/v1/products/",
+            json=product_payload(barcode="222", brand="Other"),
+            headers=auth_headers,
+        )
+
+        response = await client.post(
+            "/api/v1/products/list_of_products", json={"brand": "Acme"}
+        )
+        assert response.status_code == 200, response.text
+        barcodes = {item["barcode"] for item in response.json()}
+        assert barcodes == {"111"}
+
+    async def test_filters_by_name_substring_case_insensitive(
+        self, client, auth_headers
+    ):
+        await client.post(
+            "/api/v1/products/",
+            json=product_payload(barcode="111", product_name="Peanut Butter"),
+            headers=auth_headers,
+        )
+        await client.post(
+            "/api/v1/products/",
+            json=product_payload(barcode="222", product_name="Almond Milk"),
+            headers=auth_headers,
+        )
+
+        response = await client.post(
+            "/api/v1/products/list_of_products", json={"product_name": "peanut"}
+        )
+        assert response.status_code == 200, response.text
+        names = [item["product_name"] for item in response.json()]
+        assert names == ["Peanut Butter"]
+
+    async def test_filters_by_allergens_matches_at_least_one(
+        self, client, auth_headers
+    ):
+        await client.post(
+            "/api/v1/products/",
+            json=product_payload(barcode="111", allergens=["peanuts"]),
+            headers=auth_headers,
+        )
+        await client.post(
+            "/api/v1/products/",
+            json=product_payload(barcode="222", allergens=["gluten", "soy"]),
+            headers=auth_headers,
+        )
+        await client.post(
+            "/api/v1/products/",
+            json=product_payload(barcode="333", allergens=["dairy"]),
+            headers=auth_headers,
+        )
+
+        response = await client.post(
+            "/api/v1/products/list_of_products",
+            json={"allergens": ["peanuts", "soy"]},
+        )
+        assert response.status_code == 200, response.text
+        barcodes = {item["barcode"] for item in response.json()}
+        assert barcodes == {"111", "222"}
+
+    async def test_combines_brand_name_and_allergens_filters(
+        self, client, auth_headers
+    ):
+        await client.post(
+            "/api/v1/products/",
+            json=product_payload(
+                barcode="111",
+                brand="Acme",
+                product_name="Peanut Butter",
+                allergens=["peanuts"],
+            ),
+            headers=auth_headers,
+        )
+        await client.post(
+            "/api/v1/products/",
+            json=product_payload(
+                barcode="222",
+                brand="Acme",
+                product_name="Peanut Oil",
+                allergens=["gluten"],
+            ),
+            headers=auth_headers,
+        )
+        await client.post(
+            "/api/v1/products/",
+            json=product_payload(
+                barcode="333",
+                brand="Other",
+                product_name="Peanut Butter",
+                allergens=["peanuts"],
+            ),
+            headers=auth_headers,
+        )
+
+        response = await client.post(
+            "/api/v1/products/list_of_products",
+            json={
+                "brand": "Acme",
+                "product_name": "peanut",
+                "allergens": ["peanuts"],
+            },
+        )
+        assert response.status_code == 200, response.text
+        barcodes = {item["barcode"] for item in response.json()}
+        assert barcodes == {"111"}
+
+    async def test_respects_limit_and_offset(self, client, auth_headers):
+        for barcode in ["111", "222", "333"]:
+            await client.post(
+                "/api/v1/products/",
+                json=product_payload(barcode=barcode),
+                headers=auth_headers,
+            )
+
+        response = await client.post(
+            "/api/v1/products/list_of_products",
+            json={},
+            params={"limit": 1, "offset": 1},
+        )
+        assert response.status_code == 200, response.text
+        assert len(response.json()) == 1
+
+
+class TestGetBrands:
+    async def test_empty_list_when_no_products(self, client):
+        response = await client.get("/api/v1/products/brands")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    async def test_returns_unique_sorted_brands_excluding_none(
+        self, client, auth_headers
+    ):
+        await client.post(
+            "/api/v1/products/",
+            json=product_payload(barcode="111", brand="Zeta"),
+            headers=auth_headers,
+        )
+        await client.post(
+            "/api/v1/products/",
+            json=product_payload(barcode="222", brand="Acme"),
+            headers=auth_headers,
+        )
+        await client.post(
+            "/api/v1/products/",
+            json=product_payload(barcode="333", brand="Acme"),
+            headers=auth_headers,
+        )
+        await client.post(
+            "/api/v1/products/",
+            json=product_payload(barcode="444", brand=None),
+            headers=auth_headers,
+        )
+
+        response = await client.get("/api/v1/products/brands")
+        assert response.status_code == 200
+        assert response.json() == ["Acme", "Zeta"]
