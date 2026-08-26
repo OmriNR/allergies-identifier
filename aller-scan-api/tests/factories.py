@@ -33,16 +33,28 @@ def product_payload(**overrides: Any) -> dict:
     return payload
 
 
-def allergy_preference_payload(**overrides: Any) -> dict:
+def allergy_preference_create_payload(user_id: Any, **overrides: Any) -> dict:
     payload = {
+        "user_id": str(user_id),
         "allergies": ["peanuts", "shellfish"],
     }
     payload.update(overrides)
     return payload
 
 
-def scan_history_payload(**overrides: Any) -> dict:
+def allergy_preference_update_payload(userid: Any, **overrides: Any) -> dict:
     payload = {
+        "userid": str(userid),
+        "allergies": ["peanuts", "shellfish"],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def scan_history_payload(user_id: Any, product_id: Any, **overrides: Any) -> dict:
+    payload = {
+        "user_id": str(user_id),
+        "product_id": str(product_id),
         "barcode": "0123456789012",
         "product_name": "Peanut Butter",
         "brand": "Acme",

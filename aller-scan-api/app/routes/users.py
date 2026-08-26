@@ -67,7 +67,7 @@ async def delete_me(user: models.User = Depends(get_current_active_user)):
     await user.delete()
     return user
 
-@router.patch("/{userid}", response_model=schemas.User)
+@router.put("/{userid}", response_model=schemas.User)
 async def update_user(
     userid: UUID,
     update: schemas.UserUpdate
