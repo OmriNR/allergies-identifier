@@ -1,6 +1,7 @@
-// Per-user data: allergy preferences and scan history.
+// Per-user data: allergy preferences and scan history. Backed by
+// /user-properties on the aller-scan-api.
 
-import { delay, generateId, readCollection, writeCollection } from "./_mockClient";
+import { ApiError, apiRequest } from "./httpClient";
 
 export interface ScanHistoryItem {
   id: string;
@@ -16,98 +17,93 @@ export interface ScanHistoryItem {
   created_date: string;
 }
 
-interface AllergyPreference {
-  userId: string;
+interface BackendScanHistory {
+  id: string;
+  user_id: string;
+  product_id: string;
+  barcode: string;
+  product_name: string;
+  brand: string | null;
+  status: "safe" | "dangerous";
+  detected_allergens: string[];
+  created_at: string;
+}
+
+interface BackendAllergyPreference {
+  user_id: string;
   allergies: string[];
-  updatedAt: string;
+  updated_at: string;
 }
 
-const scanHistorySeed: ScanHistoryItem[] = [
-  {
-    id: "seed-1",
-    userId: "seed-user-1",
-    productId: "seed-product-1",
-    barcode: "5901234123457",
-    product_name: "Crunchy Peanut Butter",
-    brand: "NutCo",
-    status: "dangerous",
-    detected_allergens: ["Peanuts"],
-    created_date: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-  },
-  {
-    id: "seed-2",
-    userId: "seed-user-1",
-    productId: "seed-product-2",
-    barcode: "7290000066318",
-    product_name: "Oat Milk",
-    brand: "GreenFarm",
-    status: "safe",
-    detected_allergens: [],
-    created_date: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
-  },
-  {
-    id: "seed-3",
-    userId: "seed-user-1",
-    productId: "seed-product-3",
-    barcode: "0850027870016",
-    product_name: "Whole Wheat Crackers",
-    brand: "Baker's Choice",
-    status: "dangerous",
-    detected_allergens: ["Gluten", "Soybeans"],
-    created_date: new Date(Date.now() - 1000 * 60 * 60 * 50).toISOString(),
-  },
-];
-
-const allergyPreferencesSeed: AllergyPreference[] = [
-  { userId: "seed-user-1", allergies: ["Peanuts", "Gluten"], updatedAt: new Date().toISOString() },
-];
-
-function scanHistory(): ScanHistoryItem[] {
-  return readCollection<ScanHistoryItem>("scanHistory", scanHistorySeed);
-}
-
-function allergyPreferences(): AllergyPreference[] {
-  return readCollection<AllergyPreference>("allergyPreferences", allergyPreferencesSeed);
+function mapScanHistory(raw: BackendScanHistory): ScanHistoryItem {
+  return {
+    id: raw.id,
+    userId: raw.user_id,
+    productId: raw.product_id,
+    barcode: raw.barcode,
+    product_name: raw.product_name,
+    brand: raw.brand ?? undefined,
+    status: raw.status,
+    detected_allergens: raw.detected_allergens,
+    created_date: raw.created_at,
+  };
 }
 
 export async function getAllergies(userId: string): Promise<string[]> {
-  const pref = allergyPreferences().find((p) => p.userId === userId);
-  return delay(pref?.allergies ?? []);
-}
-
-export async function updateAllergies(userId: string, allergies: string[]): Promise<string[]> {
-  const all = allergyPreferences();
-  const index = all.findIndex((p) => p.userId === userId);
-  const updatedAt = new Date().toISOString();
-
-  if (index === -1) {
-    writeCollection("allergyPreferences", [...all, { userId, allergies, updatedAt }]);
-  } else {
-    const next = [...all];
-    next[index] = { userId, allergies, updatedAt };
-    writeCollection("allergyPreferences", next);
+  try {
+    const raw = await apiRequest<BackendAllergyPreference>(`/user-properties/allergies/${userId}`);
+    return raw.allergies;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return [];
+    throw err;
   }
-
-  return delay(allergies);
 }
 
+// The backend has separate create (POST, 404 if no such user, 400 if a
+// preference already exists) and update (PUT, 404 if none exists yet)
+// endpoints; try update first and fall back to create the first time.
+export async function updateAllergies(userId: string, allergies: string[]): Promise<string[]> {
+  try {
+    const raw = await apiRequest<BackendAllergyPreference>(`/user-properties/allergies/${userId}`, {
+      method: "PUT",
+      json: { userid: userId, allergies },
+    });
+    return raw.allergies;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      const raw = await apiRequest<BackendAllergyPreference>("/user-properties/allergies", {
+        method: "POST",
+        json: { user_id: userId, allergies },
+      });
+      return raw.allergies;
+    }
+    throw err;
+  }
+}
+
+// The backend returns the user's full history with no pagination; sort
+// newest-first and slice client-side to honor `limit`.
 export async function getScanHistory(userId: string, limit?: number): Promise<ScanHistoryItem[]> {
-  const items = scanHistory()
-    .filter((item) => item.userId === userId)
-    .sort((a, b) => (a.created_date < b.created_date ? 1 : -1));
-  return delay(typeof limit === "number" ? items.slice(0, limit) : items);
+  const raw = await apiRequest<BackendScanHistory[]>(`/user-properties/scan-history/users/${userId}`);
+  const items = raw.map(mapScanHistory).sort((a, b) => (a.created_date < b.created_date ? 1 : -1));
+  return typeof limit === "number" ? items.slice(0, limit) : items;
 }
 
 export async function addScanHistoryEntry(
   userId: string,
   entry: Omit<ScanHistoryItem, "id" | "userId" | "created_date">
 ): Promise<ScanHistoryItem> {
-  const record: ScanHistoryItem = {
-    ...entry,
-    id: generateId(),
-    userId,
-    created_date: new Date().toISOString(),
-  };
-  writeCollection("scanHistory", [record, ...scanHistory()]);
-  return delay(record);
+  const raw = await apiRequest<BackendScanHistory>("/user-properties/scan-history", {
+    method: "POST",
+    json: {
+      user_id: userId,
+      product_id: entry.productId,
+      barcode: entry.barcode,
+      product_name: entry.product_name,
+      brand: entry.brand,
+      status: entry.status,
+      detected_allergens: entry.detected_allergens ?? [],
+    },
+  });
+  return mapScanHistory(raw);
 }

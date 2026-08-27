@@ -1,7 +1,8 @@
 // Products: a shared cache of barcode -> product/allergen data, built up as
-// users scan things. Independent of any one user.
+// users scan things. Independent of any one user. Backed by /products on
+// the aller-scan-api.
 
-import { delay, generateId, readCollection, writeCollection } from "./_mockClient";
+import { ApiError, apiRequest } from "./httpClient";
 
 export interface Product {
   id: string;
@@ -13,69 +14,65 @@ export interface Product {
   createdAt: string;
 }
 
-const productsSeed: Product[] = [
-  {
-    id: "seed-product-1",
-    barcode: "5901234123457",
-    product_name: "Crunchy Peanut Butter",
-    brand: "NutCo",
-    allergens: ["Peanuts"],
-    source: "manual",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-  },
-  {
-    id: "seed-product-2",
-    barcode: "7290000066318",
-    product_name: "Oat Milk",
-    brand: "GreenFarm",
-    allergens: [],
-    source: "manual",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
-  },
-  {
-    id: "seed-product-3",
-    barcode: "0850027870016",
-    product_name: "Whole Wheat Crackers",
-    brand: "Baker's Choice",
-    allergens: ["Gluten", "Soybeans"],
-    source: "manual",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 50).toISOString(),
-  },
-];
+interface BackendProduct {
+  id: string;
+  barcode: string;
+  product_name: string;
+  brand: string | null;
+  allergens: string[];
+  source: "external" | "manual";
+  created_at: string;
+}
 
-function products(): Product[] {
-  return readCollection<Product>("products", productsSeed);
+function mapProduct(raw: BackendProduct): Product {
+  return {
+    id: raw.id,
+    barcode: raw.barcode,
+    product_name: raw.product_name,
+    brand: raw.brand ?? undefined,
+    allergens: raw.allergens,
+    source: raw.source,
+    createdAt: raw.created_at,
+  };
 }
 
 export async function getProductByBarcode(barcode: string): Promise<Product | null> {
-  const product = products().find((p) => p.barcode === barcode);
-  return delay(product ?? null);
+  try {
+    const raw = await apiRequest<BackendProduct>(`/products/get_by_barcode/${encodeURIComponent(barcode)}`);
+    return mapProduct(raw);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
 }
 
-// Barcode is treated as a unique key: if a concurrent caller already
-// created this product (e.g. a double-invoked effect, two tabs scanning
-// the same new barcode at once), reuse it instead of creating a duplicate.
+// Barcode is treated as a unique key server-side: if a concurrent caller
+// already created this product (e.g. a double-invoked effect, two tabs
+// scanning the same new barcode at once), reuse it instead of erroring.
 export async function createProduct(
   barcode: string,
   data: { product_name: string; brand?: string; allergens: string[] },
   source: Product["source"] = "external"
 ): Promise<Product> {
-  const existing = products().find((p) => p.barcode === barcode);
-  if (existing) {
-    return delay(existing);
+  try {
+    const raw = await apiRequest<BackendProduct>("/products/", {
+      method: "POST",
+      json: {
+        barcode,
+        product_name: data.product_name,
+        brand: data.brand,
+        allergens: data.allergens,
+        source,
+      },
+    });
+    return mapProduct(raw);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 400 || err.status === 409)) {
+      const existing = await getProductByBarcode(barcode);
+      if (existing) return existing;
+    }
+    throw err;
   }
-
-  const record: Product = {
-    id: generateId(),
-    barcode,
-    product_name: data.product_name,
-    brand: data.brand,
-    allergens: data.allergens,
-    source,
-    createdAt: new Date().toISOString(),
-  };
-  writeCollection("products", [record, ...products()]);
-  return delay(record);
 }
 
 const fallbackAllergenPool = [
@@ -100,10 +97,15 @@ function hashString(value: string): number {
   return Math.abs(hash);
 }
 
+function delay<T>(value: T, ms = 300): Promise<T> {
+  return new Promise((resolve) => setTimeout(() => resolve(value), ms));
+}
+
 // Placeholder for the real external product/allergen lookup (nutrition
-// database, barcode API, LLM, etc.) — provider is still being researched.
-// Swap this implementation out once one is chosen; callers only depend on
-// the { product_name, brand, allergens } shape below.
+// database, barcode API, LLM, etc.) — provider is still being researched
+// and isn't part of aller-scan-api. Swap this implementation out once one
+// is chosen; callers only depend on the { product_name, brand, allergens }
+// shape below.
 export async function lookupProductExternally(
   barcode: string
 ): Promise<{ product_name: string; brand: string; allergens: string[] }> {

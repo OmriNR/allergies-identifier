@@ -62,7 +62,7 @@ async def get_brands():
     brands = await models.Product.find_all().distinct("brand")
     return sorted(brand for brand in brands if brand is not None)
 
-@router.get("/get_by_id/{product_id}", response_model=list[schemas.Product])
+@router.get("/get_by_id/{product_id}", response_model=schemas.Product)
 async def get_product_by_id(product_id: UUID):
     product = await models.Product.get(product_id)
 
@@ -71,9 +71,9 @@ async def get_product_by_id(product_id: UUID):
 
     return product
 
-@router.get("/get_by_barcode/{product_barcode}", response_model=list[schemas.Product])
-async def get_product_by_id(product_barcode: str):
-    product = await models.Product.find_one({"bracode": product_barcode})
+@router.get("/get_by_barcode/{product_barcode}", response_model=schemas.Product)
+async def get_product_by_barcode(product_barcode: str):
+    product = await models.Product.find_one({"barcode": product_barcode})
 
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")

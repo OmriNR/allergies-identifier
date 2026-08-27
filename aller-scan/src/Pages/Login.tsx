@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
+import { toast } from "sonner";
 import { getReturnTo } from "@/lib/authReturnTo";
 import { useAuth } from "@/lib/AuthContext";
 import * as usersApi from "@/api/users";
@@ -37,18 +38,10 @@ export default function Login() {
   };
 
 
-  const handleGoogle = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      const { user, token } = await usersApi.loginWithGoogle();
-      login(user, token);
-      navigate(returnTo);
-    } catch (err : any) {
-      setError(err.message || "Google sign-in failed");
-    } finally {
-      setLoading(false);
-    }
+  const handleGoogle = () => {
+    toast("Google sign-in isn't available yet", {
+      description: "Please log in with your email and password instead.",
+    });
   };
 
   return (

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import * as usersApi from "@/api/users"
-import * as authApi from "@/api/authentication"
+import { clearStoredToken, getStoredToken, setStoredToken } from "@/api/httpClient"
 import type { User } from "@/api/users"
 
 export type AuthUser = User
@@ -10,60 +10,47 @@ interface AuthContextValue {
   isLoading: boolean
   login: (user: AuthUser, token: string) => void
   logout: () => Promise<void>
-  updateUser: (data: Partial<Pick<AuthUser, "name" | "avatarUrl" | "email">>) => Promise<void>
+  updateUser: (data: Partial<Pick<AuthUser, "name" | "avatarUrl">>) => Promise<void>
 }
-
-const TOKEN_STORAGE_KEY = "auth:token"
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY)
+    const storedToken = getStoredToken()
     if (!storedToken) {
       setIsLoading(false)
       return
     }
 
-    authApi.getSession(storedToken).then(async (session) => {
-      if (!session) {
-        localStorage.removeItem(TOKEN_STORAGE_KEY)
-        setIsLoading(false)
-        return
-      }
-      const restoredUser = await usersApi.getUser(session.userId)
+    usersApi.getMe(storedToken).then((restoredUser) => {
       if (restoredUser) {
         setUser(restoredUser)
-        setToken(storedToken)
       } else {
-        localStorage.removeItem(TOKEN_STORAGE_KEY)
+        clearStoredToken()
       }
       setIsLoading(false)
     })
   }, [])
 
   function login(nextUser: AuthUser, nextToken: string) {
-    localStorage.setItem(TOKEN_STORAGE_KEY, nextToken)
-    setToken(nextToken)
+    setStoredToken(nextToken)
     setUser(nextUser)
   }
 
   async function logout() {
-    if (token) {
-      await authApi.invalidateToken(token)
-    }
-    localStorage.removeItem(TOKEN_STORAGE_KEY)
-    setToken(null)
+    // JWTs are stateless and the backend has no invalidate endpoint, so
+    // logging out is purely a client-side token drop.
+    clearStoredToken()
     setUser(null)
   }
 
-  async function updateUser(data: Partial<Pick<AuthUser, "name" | "avatarUrl" | "email">>) {
+  async function updateUser(data: Partial<Pick<AuthUser, "name" | "avatarUrl">>) {
     if (!user) return
-    const updated = await usersApi.updateUser(user.id, data)
+    const updated = await usersApi.updateUser(data)
     setUser(updated)
   }
 
