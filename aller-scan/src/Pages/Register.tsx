@@ -4,14 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserPlus, Mail, Lock, Loader2 } from "lucide-react";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "sonner";
 import { getReturnTo } from "@/lib/authReturnTo";
 import { useAuth } from "@/lib/AuthContext";
 import * as usersApi from "@/api/users";
-import * as authApi from "@/api/authentication";
 
 export default function Register() {
   const { login } = useAuth();
@@ -20,8 +18,6 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showOtp, setShowOtp] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
   const returnTo = getReturnTo();
 
   const handleSubmit = async (e : any) => {
@@ -33,8 +29,9 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await usersApi.register(email, password);
-      setShowOtp(true);
+      const { user, token } = await usersApi.register(email, password);
+      login(user, token);
+      window.location.href = returnTo;
     } catch (err : any) {
       setError(err.message || "Registration failed");
     } finally {
@@ -42,99 +39,11 @@ export default function Register() {
     }
   };
 
-  const handleVerify = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      const { user, token } = await usersApi.verifyRegistration(email, otpCode);
-      login(user, token);
-      window.location.href = getReturnTo();
-    } catch (err : any) {
-      setError(err.message || "Invalid verification code");
-    } finally {
-      setLoading(false);
-    }
+  const handleGoogle = () => {
+    toast("Google sign-in isn't available yet", {
+      description: "Please sign up with your email and password instead.",
+    });
   };
-
-  const handleResend = async () => {
-    setError("");
-    try {
-      await authApi.resendVerificationEmail(email);
-      toast("Code sent", {
-        description: "Check your email for the new code.",
-      });
-    } catch (err: any) {
-      setError(err.message || "Failed to resend code");
-    }
-  };
-
-  const handleGoogle = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      const { user, token } = await usersApi.loginWithGoogle();
-      login(user, token);
-      window.location.href = getReturnTo();
-    } catch (err : any) {
-      setError(err.message || "Google sign-in failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (showOtp) {
-    return (
-      <AuthLayout
-        icon={Mail}
-        title="Verify your email"
-        subtitle={`We sent a code to ${email}`}
-      >
-        {error && (
-          <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-            {error}
-          </div>
-        )}
-        <div className="flex justify-center mb-6">
-          <InputOTP
-            maxLength={6}
-            value={otpCode}
-            onChange={setOtpCode}
-            autoFocus
-            autoComplete="one-time-code"
-          >
-            <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
-              <InputOTPSlot index={4} />
-              <InputOTPSlot index={5} />
-            </InputOTPGroup>
-          </InputOTP>
-        </div>
-        <Button
-          className="w-full h-12 font-medium"
-          onClick={handleVerify}
-          disabled={loading || otpCode.length < 6}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Verifying...
-            </>
-          ) : (
-            "Verify"
-          )}
-        </Button>
-        <p className="text-center text-sm text-muted-foreground mt-4">
-          Didn't receive the code?{" "}
-          <button onClick={handleResend} className="text-primary font-medium hover:underline">
-            Resend
-          </button>
-        </p>
-      </AuthLayout>
-    );
-  }
 
   return (
     <AuthLayout

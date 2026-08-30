@@ -1,11 +1,3 @@
-// Scan results: orchestrates a barcode scan for a user.
-//
-// - Product already known -> just compare against the user's allergies.
-// - Product unknown -> look it up externally, cache it in products.ts,
-//   then compare.
-// Either way the result is recorded in the user's scan history, linked to
-// the product it came from.
-
 import * as products from "./products";
 import * as userProperties from "./userProperties";
 import { compareAllergens } from "./alerts";
@@ -22,7 +14,11 @@ export async function scanProduct(userId: string, barcode: string): Promise<Scan
 
   if (!product) {
     const external = await products.lookupProductExternally(barcode);
-    product = await products.createProduct(barcode, external);
+    product = await products.createProduct(barcode, {
+      product_name: external?.product_name_en,
+      brand: external?.brands,
+      allergens: external?.allergens_tags.map(allergan => allergan.replace(/^en:/, ""))
+    });
   }
 
   const userAllergies = await userProperties.getAllergies(userId);
