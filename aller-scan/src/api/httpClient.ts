@@ -1,9 +1,3 @@
-// Thin fetch wrapper around the aller-scan-api backend. Handles the base
-// URL, JSON/form encoding, bearer auth, and translates FastAPI error
-// responses (HTTPException -> {detail: string}, validation errors ->
-// {detail: [{msg, ...}]}) into a single ApiError shape the rest of the
-// api/ modules can rely on.
-
 export class ApiError extends Error {
   status: number;
 
@@ -13,8 +7,6 @@ export class ApiError extends Error {
     this.status = status;
   }
 }
-
-const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 const TOKEN_STORAGE_KEY = "auth:token";
 
@@ -43,25 +35,26 @@ function extractErrorMessage(body: unknown, fallback: string): string {
   return fallback;
 }
 
-interface RequestOptions {
-  method?: string;
+export interface RequestOptions {
   json?: unknown;
   form?: Record<string, string>;
   token?: string | null;
   query?: Record<string, string | number | undefined>;
 }
 
-export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = "GET", json, form, token, query } = options;
+// `url` is the full request URL (caller owns the base URL) - this client
+// doesn't know or care which backend it's talking to.
+async function request<T>(method: string, url: string, options: RequestOptions = {}): Promise<T> {
+  const { json, form, token, query } = options;
 
-  let url = `${API_BASE_URL}${path}`;
+  let fullUrl = url;
   if (query) {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined) params.set(key, String(value));
     }
     const qs = params.toString();
-    if (qs) url += `?${qs}`;
+    if (qs) fullUrl += (fullUrl.includes("?") ? "&" : "?") + qs;
   }
 
   const headers: Record<string, string> = {};
@@ -77,7 +70,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     headers["Content-Type"] = "application/json";
   }
 
-  const response = await fetch(url, { method, headers, body });
+  const response = await fetch(fullUrl, { method, headers, body });
 
   const text = await response.text();
   let data: unknown;
@@ -92,4 +85,20 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   return data as T;
+}
+
+export function get<T>(url: string, options?: Omit<RequestOptions, "json" | "form">): Promise<T> {
+  return request<T>("GET", url, options);
+}
+
+export function post<T>(url: string, options?: RequestOptions): Promise<T> {
+  return request<T>("POST", url, options);
+}
+
+export function put<T>(url: string, options?: RequestOptions): Promise<T> {
+  return request<T>("PUT", url, options);
+}
+
+export function patch<T>(url: string, options?: RequestOptions): Promise<T> {
+  return request<T>("PATCH", url, options);
 }

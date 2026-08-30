@@ -1,8 +1,5 @@
-// Products: a shared cache of barcode -> product/allergen data, built up as
-// users scan things. Independent of any one user. Backed by /products on
-// the aller-scan-api.
-
-import { ApiError, apiRequest } from "./httpClient";
+import { ALLER_SCAN_API_BASE_URL, FOOD_FACTS_API_BASE_URL } from "./config";
+import { ApiError, get, post } from "./httpClient";
 
 export interface Product {
   id: string;
@@ -11,7 +8,7 @@ export interface Product {
   brand?: string;
   allergens: string[];
   source: "external" | "manual";
-  createdAt: string;
+  createdAt: Date;
 }
 
 interface BackendProduct {
@@ -21,7 +18,19 @@ interface BackendProduct {
   brand: string | null;
   allergens: string[];
   source: "external" | "manual";
-  created_at: string;
+  created_at: Date;
+}
+
+interface ExternalProduct {
+  brands : string
+  product_name_en: string,
+  allergens_tags: string[],
+  ingredients: any[]
+}
+
+interface ExternalRespose {
+  code: string,
+  product: ExternalProduct
 }
 
 function mapProduct(raw: BackendProduct): Product {
@@ -38,7 +47,9 @@ function mapProduct(raw: BackendProduct): Product {
 
 export async function getProductByBarcode(barcode: string): Promise<Product | null> {
   try {
-    const raw = await apiRequest<BackendProduct>(`/products/get_by_barcode/${encodeURIComponent(barcode)}`);
+    const raw = await get<BackendProduct>(
+      `${ALLER_SCAN_API_BASE_URL}/products/get_by_barcode/${encodeURIComponent(barcode)}`
+    );
     return mapProduct(raw);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
@@ -46,17 +57,13 @@ export async function getProductByBarcode(barcode: string): Promise<Product | nu
   }
 }
 
-// Barcode is treated as a unique key server-side: if a concurrent caller
-// already created this product (e.g. a double-invoked effect, two tabs
-// scanning the same new barcode at once), reuse it instead of erroring.
 export async function createProduct(
   barcode: string,
-  data: { product_name: string; brand?: string; allergens: string[] },
+  data: { product_name?: string; brand?: string; allergens?: string[] },
   source: Product["source"] = "external"
 ): Promise<Product> {
   try {
-    const raw = await apiRequest<BackendProduct>("/products/", {
-      method: "POST",
+    const raw = await post<BackendProduct>(`${ALLER_SCAN_API_BASE_URL}/products/`, {
       json: {
         barcode,
         product_name: data.product_name,
@@ -75,55 +82,14 @@ export async function createProduct(
   }
 }
 
-const fallbackAllergenPool = [
-  "Milk",
-  "Eggs",
-  "Fish",
-  "Shellfish",
-  "Tree nuts",
-  "Peanuts",
-  "Wheat",
-  "Soybeans",
-  "Gluten",
-  "Sesame",
-];
+export async function lookupProductExternally(barcode: string): Promise<ExternalProduct | null> {
+  try {
+    const raw = await get<ExternalRespose>(`${FOOD_FACTS_API_BASE_URL}/product/${barcode}.json`, { token: null });
 
-function hashString(value: string): number {
-  let hash = 0;
-  for (let i = 0; i < value.length; i++) {
-    hash = (hash << 5) - hash + value.charCodeAt(i);
-    hash |= 0;
+    return raw.product
   }
-  return Math.abs(hash);
-}
-
-function delay<T>(value: T, ms = 300): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(value), ms));
-}
-
-// Placeholder for the real external product/allergen lookup (nutrition
-// database, barcode API, LLM, etc.) — provider is still being researched
-// and isn't part of aller-scan-api. Swap this implementation out once one
-// is chosen; callers only depend on the { product_name, brand, allergens }
-// shape below.
-export async function lookupProductExternally(
-  barcode: string
-): Promise<{ product_name: string; brand: string; allergens: string[] }> {
-  const hash = hashString(barcode);
-  const allergenCount = hash % 3;
-  const allergens = new Set(
-    Array.from(
-      { length: allergenCount },
-      (_, i) => fallbackAllergenPool[(hash + i * 7) % fallbackAllergenPool.length]
-    )
-  );
-
-  return delay(
-    {
-      product_name: `Mock Product ${barcode.slice(-4)}`,
-      brand: "Sample Brand",
-      allergens: [...allergens],
-    },
-    600
-  );
+  catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
 }

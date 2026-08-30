@@ -1,7 +1,5 @@
-// User accounts: log in, register, load/update the current profile.
-// Backed by /users and /login on the aller-scan-api.
-
-import { ApiError, apiRequest } from "./httpClient";
+import { ALLER_SCAN_API_BASE_URL } from "./config";
+import { ApiError, get, patch, post } from "./httpClient";
 
 export interface User {
   id: string;
@@ -32,7 +30,7 @@ function mapUser(raw: BackendUser): User {
 
 export async function getUser(id: string): Promise<User | null> {
   try {
-    const raw = await apiRequest<BackendUser>(`/users/${id}`);
+    const raw = await get<BackendUser>(`${ALLER_SCAN_API_BASE_URL}/users/${id}`);
     return mapUser(raw);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
@@ -44,7 +42,7 @@ export async function getUser(id: string): Promise<User | null> {
 // without throwing when the token is missing/expired.
 export async function getMe(token?: string): Promise<User | null> {
   try {
-    const raw = await apiRequest<BackendUser>("/users/me", { token });
+    const raw = await get<BackendUser>(`${ALLER_SCAN_API_BASE_URL}/users/me`, { token });
     return mapUser(raw);
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) return null;
@@ -53,9 +51,9 @@ export async function getMe(token?: string): Promise<User | null> {
 }
 
 export async function login(email: string, password: string): Promise<{ user: User; token: string }> {
-  const { access_token } = await apiRequest<{ access_token: string; token_type: string }>(
-    "/login/access-token",
-    { method: "POST", form: { username: email, password } }
+  const { access_token } = await post<{ access_token: string; token_type: string }>(
+    `${ALLER_SCAN_API_BASE_URL}/login/access-token`,
+    { form: { username: email, password } }
   );
   const user = await getMe(access_token);
   if (!user) {
@@ -64,21 +62,15 @@ export async function login(email: string, password: string): Promise<{ user: Us
   return { user, token: access_token };
 }
 
-// Creates the account (active immediately - the backend has no email
-// verification step) and logs the caller straight in.
 export async function register(email: string, password: string, name?: string): Promise<{ user: User; token: string }> {
-  await apiRequest<BackendUser>("/users/", {
-    method: "POST",
+  await post<BackendUser>(`${ALLER_SCAN_API_BASE_URL}/users/`, {
     json: { name: name?.trim() || email.split("@")[0], email, password },
   });
   return login(email, password);
 }
 
-// Updates the signed-in user's profile. The backend only accepts name and
-// avatar_url on this endpoint (email changes aren't supported yet).
 export async function updateUser(data: Partial<Pick<User, "name" | "avatarUrl">>): Promise<User> {
-  const raw = await apiRequest<BackendUser>("/users/me", {
-    method: "PATCH",
+  const raw = await patch<BackendUser>(`${ALLER_SCAN_API_BASE_URL}/users/me`, {
     json: { name: data.name, avatar_url: data.avatarUrl },
   });
   return mapUser(raw);

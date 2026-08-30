@@ -1,15 +1,11 @@
-// Per-user data: allergy preferences and scan history. Backed by
-// /user-properties on the aller-scan-api.
-
-import { ApiError, apiRequest } from "./httpClient";
+import { ALLER_SCAN_API_BASE_URL } from "./config";
+import { ApiError, get, post, put } from "./httpClient";
 
 export interface ScanHistoryItem {
   id: string;
   userId: string;
   productId: string;
   barcode: string;
-  // Snapshot of the product/result as they were at scan time, so history
-  // stays accurate even if the shared product record changes later.
   product_name: string;
   brand?: string;
   status: "safe" | "dangerous";
@@ -51,7 +47,7 @@ function mapScanHistory(raw: BackendScanHistory): ScanHistoryItem {
 
 export async function getAllergies(userId: string): Promise<string[]> {
   try {
-    const raw = await apiRequest<BackendAllergyPreference>(`/user-properties/allergies/${userId}`);
+    const raw = await get<BackendAllergyPreference>(`${ALLER_SCAN_API_BASE_URL}/user-properties/allergies/${userId}`);
     return raw.allergies;
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return [];
@@ -59,20 +55,15 @@ export async function getAllergies(userId: string): Promise<string[]> {
   }
 }
 
-// The backend has separate create (POST, 404 if no such user, 400 if a
-// preference already exists) and update (PUT, 404 if none exists yet)
-// endpoints; try update first and fall back to create the first time.
 export async function updateAllergies(userId: string, allergies: string[]): Promise<string[]> {
   try {
-    const raw = await apiRequest<BackendAllergyPreference>(`/user-properties/allergies/${userId}`, {
-      method: "PUT",
+    const raw = await put<BackendAllergyPreference>(`${ALLER_SCAN_API_BASE_URL}/user-properties/allergies/${userId}`, {
       json: { userid: userId, allergies },
     });
     return raw.allergies;
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
-      const raw = await apiRequest<BackendAllergyPreference>("/user-properties/allergies", {
-        method: "POST",
+      const raw = await post<BackendAllergyPreference>(`${ALLER_SCAN_API_BASE_URL}/user-properties/allergies`, {
         json: { user_id: userId, allergies },
       });
       return raw.allergies;
@@ -81,10 +72,8 @@ export async function updateAllergies(userId: string, allergies: string[]): Prom
   }
 }
 
-// The backend returns the user's full history with no pagination; sort
-// newest-first and slice client-side to honor `limit`.
 export async function getScanHistory(userId: string, limit?: number): Promise<ScanHistoryItem[]> {
-  const raw = await apiRequest<BackendScanHistory[]>(`/user-properties/scan-history/users/${userId}`);
+  const raw = await get<BackendScanHistory[]>(`${ALLER_SCAN_API_BASE_URL}/user-properties/scan-history/users/${userId}`);
   const items = raw.map(mapScanHistory).sort((a, b) => (a.created_date < b.created_date ? 1 : -1));
   return typeof limit === "number" ? items.slice(0, limit) : items;
 }
@@ -93,8 +82,7 @@ export async function addScanHistoryEntry(
   userId: string,
   entry: Omit<ScanHistoryItem, "id" | "userId" | "created_date">
 ): Promise<ScanHistoryItem> {
-  const raw = await apiRequest<BackendScanHistory>("/user-properties/scan-history", {
-    method: "POST",
+  const raw = await post<BackendScanHistory>(`${ALLER_SCAN_API_BASE_URL}/user-properties/scan-history`, {
     json: {
       user_id: userId,
       product_id: entry.productId,
