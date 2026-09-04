@@ -10,3 +10,5 @@ from .user_properties import (
 from .users import User, UserCreate, UserUpdate
 
 from .products import Product, ProductCreate, ProductFilter
+
+from .resteraunt import Resteraunt, ResterauntCreate, ResterauntUpdate
