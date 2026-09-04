@@ -36,17 +36,63 @@ async def create_resteraunt(resteraunt_in: schemas.ResterauntCreate):
 
 @router.put("/{resteraunt_id}", response_model=schemas.Resteraunt)
 async def update_resteraunt(resteraunt_id: str, update: schemas.ResterauntUpdate):
-    return "check"
+    resteraunt = await models.Resteraunt.get(resteraunt_id)
+
+    if resteraunt is None:
+        raise HTTPException(status_code=404, detail="Resteraunt not found")
+
+    updated_data = update.model_dump(exclude=True)
+
+    updated_resteraunt = resteraunt.model_copy(update=updated_data)
+
+    try:
+        await updated_resteraunt.save()
+        return updated_resteraunt
+    except (errors.DuplicateKeyError, RevisionIdWasChanged):
+        raise HTTPException(status_code=400, detail="Resteraunt with that google id is already exist")
+    
 
 @router.delete("/{resteraunt_id}", response_model=schemas.Resteraunt)
 async def delete_resteraunt(reseraunt_id: str):
-    return "check"
+    resteraunt = await models.Resteraunt.get(reseraunt_id)
+
+    if resteraunt is None:
+         raise HTTPException(status_code=404, detail="resteraunt not found")
+
+    await resteraunt.delete()
+
+    return resteraunt
 
 
-@router.get("get_by_id/{resteraunt_id}", response_model=schemas.Resteraunt)
+@router.get("/{resteraunt_id}", response_model=schemas.Resteraunt)
 async def get_by_id(resteraunt_id: str):
-    return "check"
+    resteraunt = await models.Resteraunt.get(resteraunt_id)
+    
+    if resteraunt is None:
+        raise HTTPException(status_code=404, detail="resteraunt not found")
+    
+    return resteraunt
 
-@router.post("get_closest/radius:{radius}", response_model=list[schemas.Resteraunt])
-async def get_closest_by_radius(radius: float, location: models.Location):
-    return "check"
+@router.get("/nearby", response_model=list[schemas.Resteraunt])
+async def get_nearby(
+    latitude: float = Query(..., description="User latitude"),
+    longitude: float = Query(..., description="User longitude"),
+    radius_meters: float = Query(1000.0, gt=0, description="radius in meters")):
+        close_restaurants = await models.Resteraunt.find(
+            {
+                "location.coordinates": {
+                    "$near": {
+                        "$geometry": {
+                            "type": "Point",
+                            "coordinates": [longitude, latitude]
+                        },
+                        "$maxDistance": radius_meters
+                    }
+                }
+            }
+        ).to_list()
+
+        if len(close_restaurants) == 0:
+            raise HTTPException(status_code=404, detail="Close resteraunts were not found, please increase the radius")
+
+        return close_restaurants

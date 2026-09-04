@@ -3,11 +3,10 @@ from uuid import UUID
 
 from beanie import Document, Indexed
 from pydantic import BaseModel
-
+import pymongo
 
 class Location(BaseModel):
     full_address: str
-    city: str
     coordinates: list[float] = []
 
 
@@ -29,3 +28,6 @@ class Resteraunt(Document):
 
     class Settings:
         name = "resteraunts"
+        inexes = [
+            [("location.coordinates", pymongo.GEOSPHERE)]
+        ]
