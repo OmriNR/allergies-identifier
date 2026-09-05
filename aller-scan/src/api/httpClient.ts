@@ -102,3 +102,7 @@ export function put<T>(url: string, options?: RequestOptions): Promise<T> {
 export function patch<T>(url: string, options?: RequestOptions): Promise<T> {
   return request<T>("PATCH", url, options);
 }
+
+export function del<T>(url: string, options?: Omit<RequestOptions, "json" | "form">): Promise<T> {
+  return request<T>("DELETE", url, options);
+}

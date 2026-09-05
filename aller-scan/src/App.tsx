@@ -12,7 +12,7 @@ import ForgotPassword from '@/Pages/ForgotPassword'
 import ResetPassword from '@/Pages/ResetPassword'
 import Preferences from '@/Pages/Preferences'
 import Alert from '@/Pages/Alert'
-import Map from '@/Pages/Map'
+import Map from '@/Pages/ResterauntsMap'
 import TabLayout from '@/components/TabLayout'
 
 function App() {

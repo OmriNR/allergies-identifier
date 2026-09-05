@@ -1,0 +1,16 @@
+export const COMMON_ALLERGENS: string[] = [
+  "Milk",
+  "Eggs",
+  "Fish",
+  "Shellfish",
+  "Tree nuts",
+  "Peanuts",
+  "Wheat",
+  "Soybeans",
+  "Gluten",
+  "Sesame",
+  "Sulfites",
+  "Mustard",
+  "Celery",
+  "Lupin",
+];
