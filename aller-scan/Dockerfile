@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM oven/bun:1-alpine AS build
 
 WORKDIR /app
 
@@ -9,11 +9,11 @@ ARG VITE_FOOD_FACTS_API_BASE_URL=https://world.openfoodfacts.net/api/v3.6
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_FOOD_FACTS_API_BASE_URL=$VITE_FOOD_FACTS_API_BASE_URL
 
-COPY package*.json ./
-RUN npm ci --silent
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
 COPY . .
-RUN npm run build
+RUN bun run build
 
 
 FROM nginx:1.27-alpine

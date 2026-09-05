@@ -1,0 +1,3 @@
+{
+    "python.defaultInterpreterPath": "${workspaceFolder}/aller-scan-api/.venv/bin/python"
+}

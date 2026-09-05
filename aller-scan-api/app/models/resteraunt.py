@@ -28,6 +28,6 @@ class Resteraunt(Document):
 
     class Settings:
         name = "resteraunts"
-        inexes = [
+        indexes = [
             [("location.coordinates", pymongo.GEOSPHERE)]
         ]

@@ -8,6 +8,7 @@ export const ROUTES = {
   resetPassword: "/reset-password",
   preferences: "/preferences",
   alert: "/alert",
+  map: "/map",
 } as const
 
 export const QUERY_PARAMS = {
