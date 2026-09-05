@@ -40,12 +40,13 @@ export interface RequestOptions {
   form?: Record<string, string>;
   token?: string | null;
   query?: Record<string, string | number | undefined>;
+  headers?: Record<string, string>;
 }
 
 // `url` is the full request URL (caller owns the base URL) - this client
 // doesn't know or care which backend it's talking to.
 async function request<T>(method: string, url: string, options: RequestOptions = {}): Promise<T> {
-  const { json, form, token, query } = options;
+  const { json, form, token, query, headers: extraHeaders } = options;
 
   let fullUrl = url;
   if (query) {
@@ -57,7 +58,7 @@ async function request<T>(method: string, url: string, options: RequestOptions =
     if (qs) fullUrl += (fullUrl.includes("?") ? "&" : "?") + qs;
   }
 
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...extraHeaders };
   const authToken = token !== undefined ? token : getStoredToken();
   if (authToken) headers.Authorization = `Bearer ${authToken}`;
 
