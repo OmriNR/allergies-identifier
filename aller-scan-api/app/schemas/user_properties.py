@@ -30,8 +30,6 @@ class ScanHistoryCreate(BaseModel):
     barcode: str
     product_name: str
     brand: str | None = None
-    status: ScanStatus
-    detected_allergens: list[str] = []
 
 
 class ScanHistory(BaseModel):

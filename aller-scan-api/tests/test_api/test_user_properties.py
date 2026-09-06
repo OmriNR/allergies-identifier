@@ -11,8 +11,12 @@ auth-based contract sketched in tests/README.md):
   Replaces (not merges) the list. 404 if no preference exists yet.
 - GET  /user-properties/scan-history/users/{userid}     404 if user unknown.
 - POST /user-properties/scan-history          Body matches ScanHistoryCreate
-  (user_id, product_id, barcode, product_name, brand?, status,
-  detected_allergens?). 404 if the user or the product doesn't exist.
+  (user_id, product_id, barcode, product_name, brand?). 404 if the user or
+  the product doesn't exist. `status`/`detected_allergens` are computed
+  server-side: the product's allergens are matched against the allergen
+  reference table (cached per barcode as an AllergenProfile) and
+  cross-checked against the user's AllergyPreference - any overlap makes
+  the scan "dangerous" and lists the matched allergens.
 - GET  /user-properties/scan-history/products/{product_id}   404 if product
   unknown. Supports `limit` (default 20, 1-100).
 """
@@ -214,7 +218,7 @@ class TestCreateScanHistory:
         )
         assert response.status_code == 404
 
-    async def test_creates_scan_record(self, client):
+    async def test_safe_when_user_has_no_matching_allergy(self, client):
         userid = await _register_user(client)
         product = await _create_product()
 
@@ -226,22 +230,31 @@ class TestCreateScanHistory:
         assert response.status_code == 201, response.text
         body = response.json()
         assert body["barcode"] == "0123456789012"
-        assert body["status"] == "dangerous"
-        assert body["detected_allergens"] == ["peanuts"]
+        assert body["status"] == "safe"
+        assert body["detected_allergens"] == []
         assert body["user_id"] == str(userid)
         assert body["product_id"] == str(product.id)
 
-    async def test_invalid_status_returns_422(self, client):
+    async def test_dangerous_when_product_allergen_matches_user_preference(self, client):
         userid = await _register_user(client)
         product = await _create_product()
 
+        await client.post(
+            "/api/v1/user-properties/allergies",
+            json=allergy_preference_create_payload(userid, allergies=["peanuts"]),
+        )
+
         response = await client.post(
             "/api/v1/user-properties/scan-history",
-            json=scan_history_payload(userid, product.id, status="unknown"),
+            json=scan_history_payload(userid, product.id),
         )
-        assert response.status_code == 422
 
-    @pytest.mark.parametrize("missing_field", ["barcode", "product_name", "status"])
+        assert response.status_code == 201, response.text
+        body = response.json()
+        assert body["status"] == "dangerous"
+        assert body["detected_allergens"] == ["Peanut"]
+
+    @pytest.mark.parametrize("missing_field", ["barcode", "product_name"])
     async def test_missing_required_field_returns_422(self, client, missing_field):
         userid = await _register_user(client)
         product = await _create_product()
@@ -253,19 +266,6 @@ class TestCreateScanHistory:
             "/api/v1/user-properties/scan-history", json=payload
         )
         assert response.status_code == 422
-
-    async def test_detected_allergens_default_to_empty_list(self, client):
-        userid = await _register_user(client)
-        product = await _create_product()
-
-        payload = scan_history_payload(userid, product.id, status="safe")
-        payload.pop("detected_allergens")
-
-        response = await client.post(
-            "/api/v1/user-properties/scan-history", json=payload
-        )
-        assert response.status_code == 201
-        assert response.json()["detected_allergens"] == []
 
 
 class TestListScanHistoryByUser:

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pymongo import errors
 
 from .. import models, schemas
+from ..services.allergen_detection import get_or_create_profile, matched_user_allergens
 
 router = APIRouter()
 
@@ -83,14 +84,17 @@ async def create_scan_history(scan_in: schemas.ScanHistoryCreate):
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
 
+    profile = await get_or_create_profile(scan_in.barcode, product.allergens)
+    matched = await matched_user_allergens(profile, scan_in.user_id)
+
     scan = models.ScanHistory(
         user_id=scan_in.user_id,
         product_id=scan_in.product_id,
         barcode=scan_in.barcode,
         product_name=scan_in.product_name,
         brand=scan_in.brand,
-        status=scan_in.status,
-        detected_allergens=scan_in.detected_allergens,
+        status=models.ScanStatus.DANGEROUS if matched else models.ScanStatus.SAFE,
+        detected_allergens=matched,
     )
     await scan.create()
     return scan

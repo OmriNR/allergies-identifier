@@ -1,15 +1,13 @@
-"""Ingredient -> allergen matching.
-
-Kept independent of the DB models and routes: the reference table
-(app/data/allergen_reference.json) can be edited or extended without
-touching this logic, and this logic can be reused for any string list
-(product ingredients, a user's free-text allergy tags, ...).
+"""Ingredient -> allergen matching, plus the profile cache and user
+cross-check that sit on top of it. Shared by the /allergens/check endpoint
+and the product-scan flow so both compute allergen warnings the same way.
 """
 
 import json
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
+from uuid import UUID
 
 REFERENCE_PATH = Path(__file__).resolve().parent.parent / "data" / "allergen_reference.json"
 
@@ -55,3 +53,51 @@ def detect_allergens(terms: list[str]) -> list[AllergenMatch]:
             match.triggered_by.append(term)
 
     return list(matches.values())
+
+
+async def get_or_create_profile(barcode: str, terms: list[str]):
+    """Return the cached allergen profile for a barcode, detecting and
+    saving one from `terms` (e.g. product ingredients/allergen tags) if
+    none exists yet."""
+    from ..models.allergen_profile import AllergenProfile, DetectedAllergen
+
+    profile = await AllergenProfile.find_one({"barcode": barcode})
+    if profile is not None:
+        return profile
+
+    matches = detect_allergens(terms)
+    profile = AllergenProfile(
+        barcode=barcode,
+        detected_allergens=[
+            DetectedAllergen(
+                allergen=match.allergen,
+                display_name=match.display_name,
+                triggered_by=match.triggered_by,
+            )
+            for match in matches
+        ],
+        detection_source=DETECTION_SOURCE,
+    )
+    await profile.create()
+    return profile
+
+
+async def matched_user_allergens(profile, user_id: UUID | None) -> list[str]:
+    """Display names of the profile's detected allergens that also appear
+    in the given user's allergy preferences. Empty if no user or no
+    preference is set."""
+    from ..models.user_properties import AllergyPreference
+
+    if user_id is None:
+        return []
+
+    preference = await AllergyPreference.find_one({"user_id": user_id})
+    if preference is None:
+        return []
+
+    user_allergen_keys = {match.allergen for match in detect_allergens(preference.allergies)}
+    return [
+        detected.display_name
+        for detected in profile.detected_allergens
+        if detected.allergen in user_allergen_keys
+    ]

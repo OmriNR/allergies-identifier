@@ -67,8 +67,6 @@ def scan_history_payload(user_id: Any, product_id: Any, **overrides: Any) -> dic
         "barcode": "0123456789012",
         "product_name": "Peanut Butter",
         "brand": "Acme",
-        "status": "dangerous",
-        "detected_allergens": ["peanuts"],
     }
     payload.update(overrides)
     return payload
