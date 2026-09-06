@@ -1,3 +1,9 @@
+from .allergen_profile import (
+    AllergenCheckRequest,
+    AllergenCheckResponse,
+    AllergenProfile,
+    DetectedAllergen,
+)
 from .tokens import Token, TokenPayload
 from .user_properties import (
     AllergyPreference,

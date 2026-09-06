@@ -59,7 +59,7 @@ async def list_of_products(
 
 @router.get("/brands", response_model=list[str])
 async def get_brands():
-    brands = await models.Product.find_all().distinct("brand")
+    brands = await models.Product.get_pymongo_collection().distinct("brand")
     return sorted(brand for brand in brands if brand is not None)
 
 @router.get("/get_by_id/{product_id}", response_model=schemas.Product)

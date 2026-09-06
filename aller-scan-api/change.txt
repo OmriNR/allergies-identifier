@@ -1,0 +1,48 @@
+Known mismatch: assumed products API contract vs actual implementation
+========================================================================
+
+tests/test_api/test_products.py has a section (top, "assumed contract")
+that encodes an aspirational API spec for the products endpoints. The
+routes as actually implemented (app/routes/products.py) differ from it.
+This is documented in tests/README.md as a deliberate, not-yet-resolved
+design gap - left as-is per project decision on 2026-09-05.
+
+Mismatches (7 failing tests):
+
+1. POST /api/v1/products/ has no auth requirement.
+   - Assumed: requires auth, 401 if missing.
+   - Actual: anyone can create a product, no auth dependency on the route.
+
+2. Duplicate barcode on create returns 400, not 409.
+   - Assumed: 409 Conflict.
+   - Actual: raises HTTPException(400, "Product already exist") before
+     the insert is even attempted (the 409 DuplicateKeyError branch in
+     the same handler is dead code - the 400 check always fires first).
+
+3. Single-product lookup path differs.
+   - Assumed: GET /api/v1/products/{barcode}
+   - Actual: GET /api/v1/products/get_by_barcode/{product_barcode}
+     (there's also GET /api/v1/products/get_by_id/{product_id} for UUID
+     lookups, not covered by the assumed contract at all).
+
+4. List/search endpoint differs in method, path, and params.
+   - Assumed: GET /api/v1/products/ with query params q (name substring),
+     limit, skip.
+   - Actual: POST /api/v1/products/list_of_products with a JSON body
+     (ProductFilter: brand, product_name, allergens) plus limit/offset
+     query params. No GET /api/v1/products/ route exists at all (hits
+     405, since GET /api/v1/products/{something} conflicts with the
+     get_by_barcode-style routes).
+
+GET /api/v1/products/brands (the actual, already-implemented endpoint)
+is unaffected by any of the above - it was a separate bug (Beanie
+FindMany has no .distinct(); fixed by using
+Product.get_pymongo_collection().distinct("brand")).
+
+Resolution options considered (not applied):
+- Implement the assumed contract (add auth, add /products/{barcode} and
+  GET /products/ list+search, change duplicate response to 409).
+- Rewrite the assumed-contract tests to match the actual routes.
+
+Neither was applied; this file just records the gap for whoever picks
+it up next.

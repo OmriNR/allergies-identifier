@@ -1,0 +1,38 @@
+{
+  "milk": {
+    "display_name": "Milk / dairy",
+    "synonyms": ["milk", "whey", "casein", "milk powder", "lactose", "dairy", "buttermilk", "yogurt", "cream", "butter"]
+  },
+  "wheat_gluten": {
+    "display_name": "Gluten / wheat",
+    "synonyms": ["wheat", "wheat flour", "flour", "semolina", "wheat protein", "gluten", "barley", "rye", "spelt"]
+  },
+  "soy": {
+    "display_name": "Soy",
+    "synonyms": ["soy", "soya", "soybean", "soybeans", "soy lecithin", "soy protein"]
+  },
+  "egg": {
+    "display_name": "Egg",
+    "synonyms": ["egg", "eggs", "albumin", "egg white", "egg yolk"]
+  },
+  "peanut": {
+    "display_name": "Peanut",
+    "synonyms": ["peanut", "peanuts", "groundnut"]
+  },
+  "tree_nut": {
+    "display_name": "Tree nuts",
+    "synonyms": ["almond", "cashew", "walnut", "pecan", "hazelnut", "pistachio", "macadamia"]
+  },
+  "fish": {
+    "display_name": "Fish",
+    "synonyms": ["fish", "cod", "salmon", "tuna", "anchovy"]
+  },
+  "shellfish": {
+    "display_name": "Shellfish",
+    "synonyms": ["shrimp", "crab", "lobster", "shellfish", "prawn"]
+  },
+  "sesame": {
+    "display_name": "Sesame",
+    "synonyms": ["sesame", "tahini"]
+  }
+}

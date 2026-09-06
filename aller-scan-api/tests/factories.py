@@ -51,6 +51,15 @@ def allergy_preference_update_payload(userid: Any, **overrides: Any) -> dict:
     return payload
 
 
+def allergen_check_payload(**overrides: Any) -> dict:
+    payload = {
+        "barcode": "0123456789012",
+        "ingredients": ["Whey", "Flour", "Soybeans"],
+    }
+    payload.update(overrides)
+    return payload
+
+
 def scan_history_payload(user_id: Any, product_id: Any, **overrides: Any) -> dict:
     payload = {
         "user_id": str(user_id),
