@@ -46,3 +46,58 @@ Resolution options considered (not applied):
 
 Neither was applied; this file just records the gap for whoever picks
 it up next.
+
+
+z-dev branch: allergen cross-check wiring (2026-09-06)
+========================================================
+
+Backend (aller-scan-api):
+
+1. Wired the allergen check into the product-scan flow.
+   - POST /user-properties/scan-history used to trust client-supplied
+     `status` and `detected_allergens` verbatim (ScanHistoryCreate).
+   - Now the route looks up/creates a cached AllergenProfile for the
+     scanned barcode from the product's `allergens` field, cross-checks
+     it against the scanning user's AllergyPreference, and computes
+     `status` (safe/dangerous) and `detected_allergens` itself.
+     `status`/`detected_allergens` were removed from ScanHistoryCreate -
+     they're server-computed now, not client input.
+   - Extracted `get_or_create_profile()` and `matched_user_allergens()`
+     into app/services/allergen_detection.py so /allergens/check and the
+     scan-history route share one implementation instead of duplicating
+     the cache-lookup + cross-check logic.
+
+2. Swapped the allergen reference table (app/data/allergen_reference.json)
+   from a hand-picked ~9-category list to the EU's 14 regulated allergens
+   (Regulation (EU) No 1169/2011, Annex II): cereals containing gluten,
+   crustaceans, eggs, fish, peanuts, soybeans, milk, tree nuts, celery,
+   mustard, sesame, sulphur dioxide/sulphites, lupin, molluscs. Category
+   keys and display names changed (e.g. wheat_gluten -> gluten_cereals,
+   "Milk / dairy" -> "Milk", tree_nut -> tree_nuts, soy -> soybeans;
+   shellfish split into crustaceans + molluscs). Tests asserting the old
+   keys/display names were updated to match.
+   - Still no citation/source pinned in the data file itself, and it's
+     still a hand-typed synonym list, not derived from an ingredient
+     ontology - matching is still naive substring containment (see the
+     `ponytail:` comment in allergen_detection.py). Swapping the *list*
+     of categories doesn't fix the *matching* method.
+
+Frontend (aller-scan):
+
+3. Removed the redundant client-side allergen comparison in the scan
+   flow. aller-scan/src/api/scans.ts used to fetch the user's allergies
+   and run its own naive exact-match comparison (api/alerts.ts), then
+   send the computed status/detected_allergens to the backend - which,
+   after (1), ignores those fields and computes them itself. Deleted
+   alerts.ts and stopped sending status/detected_allergens from
+   scanProduct(); Alert.tsx already reads status/detected_allergens from
+   the scan-history response, so no UI change was needed.
+
+Not done / still open:
+- No real barcode decoding - BarcodeScanner.tsx shows camera video and
+  takes typed/manual entry, it doesn't decode a barcode from the image.
+- No ingredient-list parsing - detection still runs against the flat
+  `Product.allergens` list (populated manually or from Open Food Facts'
+  `allergens_tags`), not a full ingredients string.
+- The products API contract gap above (mismatches 1-4) is unrelated and
+  still unresolved.

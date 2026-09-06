@@ -24,7 +24,7 @@ class TestCheckAllergens:
         body = response.json()
         assert body["from_cache"] is False
         detected = {a["allergen"]: a for a in body["profile"]["detected_allergens"]}
-        assert set(detected) == {"milk", "wheat_gluten", "soy"}
+        assert set(detected) == {"milk", "gluten_cereals", "soybeans"}
         assert detected["milk"]["triggered_by"] == ["Whey"]
 
     async def test_second_check_reuses_saved_profile_without_reanalyzing(self, client):
@@ -42,7 +42,7 @@ class TestCheckAllergens:
 
         assert body["from_cache"] is True
         detected = {a["allergen"] for a in body["profile"]["detected_allergens"]}
-        assert detected == {"milk", "wheat_gluten", "soy"}
+        assert detected == {"milk", "gluten_cereals", "soybeans"}
         assert body["profile"]["id"] == first.json()["profile"]["id"]
 
     async def test_warns_when_user_allergy_matches_detected_allergen(self, client):
@@ -60,7 +60,7 @@ class TestCheckAllergens:
         body = response.json()
 
         assert body["warning"] is True
-        assert body["matched_user_allergens"] == ["Milk / dairy"]
+        assert body["matched_user_allergens"] == ["Milk"]
 
     async def test_no_warning_when_user_has_no_matching_allergy(self, client):
         user_id = await _create_user_uuid(client)

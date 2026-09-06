@@ -252,7 +252,7 @@ class TestCreateScanHistory:
         assert response.status_code == 201, response.text
         body = response.json()
         assert body["status"] == "dangerous"
-        assert body["detected_allergens"] == ["Peanut"]
+        assert body["detected_allergens"] == ["Peanuts"]
 
     @pytest.mark.parametrize("missing_field", ["barcode", "product_name"])
     async def test_missing_required_field_returns_422(self, client, missing_field):

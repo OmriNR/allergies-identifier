@@ -5,11 +5,11 @@ def test_detects_allergens_from_synonyms():
     matches = detect_allergens(["Whey", "Flour", "Soybeans"])
     by_key = {match.allergen: match for match in matches}
 
-    assert set(by_key) == {"milk", "wheat_gluten", "soy"}
-    assert by_key["milk"].display_name == "Milk / dairy"
+    assert set(by_key) == {"milk", "gluten_cereals", "soybeans"}
+    assert by_key["milk"].display_name == "Milk"
     assert by_key["milk"].triggered_by == ["Whey"]
-    assert by_key["wheat_gluten"].display_name == "Gluten / wheat"
-    assert by_key["soy"].display_name == "Soy"
+    assert by_key["gluten_cereals"].display_name == "Cereals containing gluten"
+    assert by_key["soybeans"].display_name == "Soybeans"
 
 
 def test_ignores_unrelated_ingredients():
@@ -26,7 +26,7 @@ def test_collects_all_triggering_ingredients_per_allergen():
 
 def test_matches_synonym_embedded_in_a_longer_ingredient_phrase():
     matches = detect_allergens(["Enriched wheat flour"])
-    assert [match.allergen for match in matches] == ["wheat_gluten"]
+    assert [match.allergen for match in matches] == ["gluten_cereals"]
 
 
 def test_empty_and_blank_terms_are_ignored():

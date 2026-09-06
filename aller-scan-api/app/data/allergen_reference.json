@@ -1,38 +1,58 @@
 {
-  "milk": {
-    "display_name": "Milk / dairy",
-    "synonyms": ["milk", "whey", "casein", "milk powder", "lactose", "dairy", "buttermilk", "yogurt", "cream", "butter"]
+  "gluten_cereals": {
+    "display_name": "Cereals containing gluten",
+    "synonyms": ["wheat", "wheat flour", "flour", "semolina", "wheat protein", "gluten", "barley", "rye", "spelt", "oats", "oat", "kamut", "durum", "couscous", "bulgur", "malt"]
   },
-  "wheat_gluten": {
-    "display_name": "Gluten / wheat",
-    "synonyms": ["wheat", "wheat flour", "flour", "semolina", "wheat protein", "gluten", "barley", "rye", "spelt"]
-  },
-  "soy": {
-    "display_name": "Soy",
-    "synonyms": ["soy", "soya", "soybean", "soybeans", "soy lecithin", "soy protein"]
+  "crustaceans": {
+    "display_name": "Crustaceans",
+    "synonyms": ["shrimp", "crab", "lobster", "crustacean", "crustaceans", "prawn", "prawns", "crayfish", "langoustine"]
   },
   "egg": {
-    "display_name": "Egg",
-    "synonyms": ["egg", "eggs", "albumin", "egg white", "egg yolk"]
-  },
-  "peanut": {
-    "display_name": "Peanut",
-    "synonyms": ["peanut", "peanuts", "groundnut"]
-  },
-  "tree_nut": {
-    "display_name": "Tree nuts",
-    "synonyms": ["almond", "cashew", "walnut", "pecan", "hazelnut", "pistachio", "macadamia"]
+    "display_name": "Eggs",
+    "synonyms": ["egg", "eggs", "albumin", "egg white", "egg yolk", "ovalbumin", "lysozyme"]
   },
   "fish": {
     "display_name": "Fish",
-    "synonyms": ["fish", "cod", "salmon", "tuna", "anchovy"]
+    "synonyms": ["fish", "cod", "salmon", "tuna", "anchovy", "anchovies", "haddock", "herring", "mackerel", "sardine", "fish sauce", "fish oil"]
   },
-  "shellfish": {
-    "display_name": "Shellfish",
-    "synonyms": ["shrimp", "crab", "lobster", "shellfish", "prawn"]
+  "peanut": {
+    "display_name": "Peanuts",
+    "synonyms": ["peanut", "peanuts", "groundnut", "groundnuts", "peanut oil", "arachis oil"]
+  },
+  "soybeans": {
+    "display_name": "Soybeans",
+    "synonyms": ["soy", "soya", "soybean", "soybeans", "soy lecithin", "soy protein", "soja"]
+  },
+  "milk": {
+    "display_name": "Milk",
+    "synonyms": ["milk", "whey", "casein", "milk powder", "lactose", "dairy", "buttermilk", "yogurt", "cream", "butter", "ghee", "milk protein", "caseinate"]
+  },
+  "tree_nuts": {
+    "display_name": "Tree nuts",
+    "synonyms": ["almond", "hazelnut", "walnut", "cashew", "pecan", "brazil nut", "pistachio", "macadamia", "queensland nut"]
+  },
+  "celery": {
+    "display_name": "Celery",
+    "synonyms": ["celery", "celeriac", "celery salt", "celery seed"]
+  },
+  "mustard": {
+    "display_name": "Mustard",
+    "synonyms": ["mustard", "mustard seed", "mustard flour", "dijon"]
   },
   "sesame": {
     "display_name": "Sesame",
-    "synonyms": ["sesame", "tahini"]
+    "synonyms": ["sesame", "tahini", "sesame oil", "sesame seed", "benne"]
+  },
+  "sulphites": {
+    "display_name": "Sulphur dioxide and sulphites",
+    "synonyms": ["sulphite", "sulfite", "sulphites", "sulfites", "sulphur dioxide", "sulfur dioxide", "e220", "e221", "e222", "e223", "e224", "e226", "e227", "e228"]
+  },
+  "lupin": {
+    "display_name": "Lupin",
+    "synonyms": ["lupin", "lupine", "lupin flour", "lupine flour", "lupin bean"]
+  },
+  "molluscs": {
+    "display_name": "Molluscs",
+    "synonyms": ["mollusc", "molluscs", "mollusk", "mollusks", "squid", "octopus", "mussel", "mussels", "oyster", "oysters", "clam", "clams", "scallop", "scallops", "snail", "escargot"]
   }
 }
