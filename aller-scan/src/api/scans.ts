@@ -1,6 +1,5 @@
 import * as products from "./products";
 import * as userProperties from "./userProperties";
-import { compareAllergens } from "./alerts";
 import type { ScanHistoryItem } from "./userProperties";
 import type { Product } from "./products";
 
@@ -21,16 +20,13 @@ export async function scanProduct(userId: string, barcode: string): Promise<Scan
     });
   }
 
-  const userAllergies = await userProperties.getAllergies(userId);
-  const { detected, status } = await compareAllergens(product.allergens, userAllergies);
-
+  // The backend cross-checks the product's allergens against the user's
+  // allergy preferences and computes status/detected_allergens itself.
   const historyEntry = await userProperties.addScanHistoryEntry(userId, {
     productId: product.id,
     barcode: product.barcode,
     product_name: product.product_name,
     brand: product.brand,
-    status,
-    detected_allergens: detected,
   });
 
   return { historyEntry, product };

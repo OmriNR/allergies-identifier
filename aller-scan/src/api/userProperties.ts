@@ -80,7 +80,7 @@ export async function getScanHistory(userId: string, limit?: number): Promise<Sc
 
 export async function addScanHistoryEntry(
   userId: string,
-  entry: Omit<ScanHistoryItem, "id" | "userId" | "created_date">
+  entry: Pick<ScanHistoryItem, "productId" | "barcode" | "product_name" | "brand">
 ): Promise<ScanHistoryItem> {
   const raw = await post<BackendScanHistory>(`${ALLER_SCAN_API_BASE_URL}/user-properties/scan-history`, {
     json: {
@@ -89,8 +89,6 @@ export async function addScanHistoryEntry(
       barcode: entry.barcode,
       product_name: entry.product_name,
       brand: entry.brand,
-      status: entry.status,
-      detected_allergens: entry.detected_allergens ?? [],
     },
   });
   return mapScanHistory(raw);
