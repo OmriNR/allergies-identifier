@@ -18,6 +18,7 @@ async def create_resteraunt(resteraunt_in: schemas.ResterauntCreate):
     resteraunt = models.Resteraunt(
         id=resteraunt_in.google_maps_id,
         added_by=resteraunt_in.added_by,
+        resteraunt_name=resteraunt_in.resteraunt_name,
         opening_times=resteraunt_in.opening_times,
         location=resteraunt_in.location,
         website_url=resteraunt_in.website_url,

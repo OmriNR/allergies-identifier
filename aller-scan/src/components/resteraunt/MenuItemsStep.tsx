@@ -38,7 +38,7 @@ export default function MenuItemsStep({ place }: MenuItemsStepProps) {
             });
 
             toast.success("Resteraunt added");
-            navigate("/resteraunts");
+            navigate("/restaurants");
         } catch {
             toast.error("Could not add resteraunt");
         } finally {

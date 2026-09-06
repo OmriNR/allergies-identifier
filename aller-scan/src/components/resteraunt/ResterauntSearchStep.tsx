@@ -18,7 +18,7 @@ function toResteraunt(place: GooglePlace): Resteraunt {
     opening_times: place.weekdayDescriptions,
     location: {
       full_address: place.formattedAddress,
-      coordinates: [place.location.latitude, place.location.longitude],
+      coordinates: [place.location.longitude, place.location.latitude],
     },
     website_url: place.websiteUri || undefined,
     menu_items: [],

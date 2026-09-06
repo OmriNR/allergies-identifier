@@ -24,6 +24,7 @@ class Resteraunt(BaseModel):
 
     id: str
     added_by: UUID
+    resteraunt_name: str
     opening_times: list[str] = []
     location: Location
     website_url: str | None = None

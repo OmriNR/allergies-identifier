@@ -20,6 +20,7 @@ class MenuItem(BaseModel):
 class Resteraunt(Document):
     id: str
     added_by: Annotated[UUID, Indexed()]
+    resteraunt_name: str
     opening_times: list[str] = []
     location: Location
     website_url: str | None = None

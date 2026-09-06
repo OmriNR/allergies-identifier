@@ -54,6 +54,7 @@ export async function searchWithGoogle(placeName: string): Promise<GooglePlace[]
             `${GOOGLE_MAPS_PLACES_API_BASE_URL}/places:searchText`,
             {
                 json: { textQuery: placeName },
+                token: null,
                 headers: {
                     "X-Goog-Api-Key": GOOGLE_MAPS_PLACES_API_KEY,
                     "X-Goog-FieldMask": FIELD_MASK,

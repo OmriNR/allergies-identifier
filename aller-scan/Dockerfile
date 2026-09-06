@@ -6,8 +6,12 @@ WORKDIR /app
 # they need to be passed in as build args rather than runtime env vars.
 ARG VITE_API_BASE_URL=http://localhost:8000/api/v1
 ARG VITE_FOOD_FACTS_API_BASE_URL=https://world.openfoodfacts.net/api/v3.6
+ARG VITE_GOOGLE_MAPS_PLACES_BASE_URL=https://places.googleapis.com/v1
+ARG VITE_GOOGLE_MAPS_PLACES_API_KEY
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_FOOD_FACTS_API_BASE_URL=$VITE_FOOD_FACTS_API_BASE_URL
+ENV VITE_GOOGLE_MAPS_PLACES_BASE_URL=$VITE_GOOGLE_MAPS_PLACES_BASE_URL
+ENV VITE_GOOGLE_MAPS_PLACES_API_KEY=$VITE_GOOGLE_MAPS_PLACES_API_KEY
 
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
@@ -20,6 +24,7 @@ FROM nginx:1.27-alpine
 
 
 COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
