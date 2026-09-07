@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import MenuItemForm from "./MenuItemForm";
 import { createResteraunt, type MenuItem, type Resteraunt } from "@/api/resteraunts";
+import { useAuth } from "@/lib/AuthContext";
 
 interface MenuItemsStepProps {
     place: Resteraunt
@@ -13,6 +14,7 @@ interface MenuItemsStepProps {
 
 export default function MenuItemsStep({ place }: MenuItemsStepProps) {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [items, setItems] = useState<MenuItem[]>([]);
     const [saving, setSaving] = useState(false);
 
@@ -21,12 +23,13 @@ export default function MenuItemsStep({ place }: MenuItemsStepProps) {
     const removeItem = (index: number) => setItems((prev) => prev.filter((_, i) => i !== index));
 
     const save = async () => {
+        if (!user) return;
         setSaving(true);
 
         try {
             await createResteraunt({
-                id: place.id,
-                added_by: place.added_by,
+                google_maps_id: place.id,
+                added_by: user.id,
                 resteraunt_name: place.resteraunt_name,
                 location: {
                     full_address: place.location.full_address,

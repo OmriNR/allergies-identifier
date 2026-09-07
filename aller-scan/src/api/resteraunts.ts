@@ -25,7 +25,7 @@ export interface MenuItem {
 }
 
 export interface ResterauntCreateInput {
-    id: string
+    google_maps_id: string
     added_by: string
     resteraunt_name: string
     opening_times: string[]

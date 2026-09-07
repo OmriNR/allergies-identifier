@@ -24,7 +24,7 @@ services:
     environment:
       MONGO_DB: ${MONGO_DB:-aller_scan}
     volumes:
-      - ./scripts/seed_mock_data.js:/seed_mock_data.js:ro
+      - ./scripts/seed_mock_data.js:/seed_mock_data.js:ro,Z
     entrypoint: ["sh", "-c", "mongosh --host mongo \"$MONGO_DB\" --quiet --file /seed_mock_data.js"]
     restart: "no"
 
