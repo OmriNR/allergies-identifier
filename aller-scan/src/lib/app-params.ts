@@ -8,6 +8,9 @@ export const ROUTES = {
   resetPassword: "/reset-password",
   preferences: "/preferences",
   alert: "/alert",
+  restaurants: "/restaurants",
+  restaurantNew: "/restaurants/new",
+  restaurantProfile: (id: string) => `/restaurants/${id}`,
 } as const
 
 export const QUERY_PARAMS = {

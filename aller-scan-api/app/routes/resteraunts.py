@@ -18,6 +18,7 @@ async def create_resteraunt(resteraunt_in: schemas.ResterauntCreate):
     resteraunt = models.Resteraunt(
         id=resteraunt_in.google_maps_id,
         added_by=resteraunt_in.added_by,
+        resteraunt_name=resteraunt_in.resteraunt_name,
         opening_times=resteraunt_in.opening_times,
         location=resteraunt_in.location,
         website_url=resteraunt_in.website_url,
@@ -64,19 +65,10 @@ async def delete_resteraunt(reseraunt_id: str):
     return resteraunt
 
 
-@router.get("/{resteraunt_id}", response_model=schemas.Resteraunt)
-async def get_by_id(resteraunt_id: str):
-    resteraunt = await models.Resteraunt.get(resteraunt_id)
-    
-    if resteraunt is None:
-        raise HTTPException(status_code=404, detail="resteraunt not found")
-    
-    return resteraunt
-
 @router.get("/nearby", response_model=list[schemas.Resteraunt])
 async def get_nearby(
-    latitude: float = Query(..., description="User latitude"),
-    longitude: float = Query(..., description="User longitude"),
+    latitude: float = Query(..., ge=-90, le=90, description="User latitude"),
+    longitude: float = Query(..., ge=-180, le=180, description="User longitude"),
     radius_meters: float = Query(1000.0, gt=0, description="radius in meters")):
         close_restaurants = await models.Resteraunt.find(
             {
@@ -96,3 +88,12 @@ async def get_nearby(
             raise HTTPException(status_code=404, detail="Close resteraunts were not found, please increase the radius")
 
         return close_restaurants
+
+@router.get("/{resteraunt_id}", response_model=schemas.Resteraunt)
+async def get_by_id(resteraunt_id: str):
+    resteraunt = await models.Resteraunt.get(resteraunt_id)
+
+    if resteraunt is None:
+        raise HTTPException(status_code=404, detail="resteraunt not found")
+
+    return resteraunt
